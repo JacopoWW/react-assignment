@@ -1,99 +1,80 @@
 import React, { ChangeEvent, useEffect } from "react";
-import {
-  WiredInput,
-  WiredButton,
-  WiredCard,
-  WiredCheckBox,
-} from "react-wired-elements";
-
-export interface Member {
-  id: string;
-  name: string;
-  age?: number;
-  status: string;
-  representation?: boolean;
-}
+import { Org, Member } from "../dataService";
+import { WiredButton, WiredCard, WiredCheckBox } from "react-wired-elements";
 
 export interface MemberColumn {
   label: string;
   key: keyof Member;
-}
-
-export interface Org {
-  name: string;
-  id: string;
-  type: string;
-  parent: null | string;
-  representation: string;
-  members?: string[] | null;
+  className?: string;
+  type?: HTMLInputElement["type"];
 }
 
 const MEMBER_COLUMNS: MemberColumn[] = [
-  { label: "user name", key: "name" },
-  { label: "age", key: "age" },
-  { label: "activated", key: "status" },
-  { label: "representation", key: "representation" },
+  { label: "user name", key: "name", className: "w-40 pl-4" },
+  { label: "age", key: "age", className: "w-40 pl-4" },
+  { label: "activated", key: "status", className: "w-20", type: "checkbox" },
+  {
+    label: "representation",
+    key: "representation",
+    className: "w-[7rem]",
+    type: "checkbox",
+  },
 ];
 
 export const OrgCard: React.FC<{
   data: Org;
-  findChildOrg: (org: Org) => Org[];
-  map2Member: (members: string[]) => Member[];
-  memberChange: (member: Member) => void;
-  orgChange: (org: Org) => void;
-}> = ({ data, findChildOrg, map2Member, memberChange, orgChange }) => {
-  const [expand_child, setExpand] = React.useState(false);
-  Array.isArray(data.members) || (data.members = []);
-  const child_orgs = findChildOrg(data);
-  const members = map2Member(data.members);
-
-  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    /* @ts-ignore */
-    //e.target.removeEventListener('change', onChange);
-    const copy = { ...data };
-    console.log(e.target, copy.name);
-    copy.name = e.target.value;
-    orgChange(copy);
-  };
+  //   findChildOrg: (org: Org) => Org[];
+  //   map2Member: (members: string[]) => Member[];
+  //   memberChange: (member: Member) => void;
+  //   orgChange: (org: Org) => void;
+}> = ({
+  data,
+  // findChildOrg,
+  // map2Member,
+  // memberChange,
+  // orgChange
+}) => {
+  console.log(data, "注意这里");
+  const [expand, setExpand] = React.useState<boolean>(false);
+  const input = React.createRef<HTMLInputElement>();
+  useEffect(() => {
+    input.current?.addEventListener("input", (e) => {
+      console.log("输入了", input.current?.value);
+    });
+  }, []);
 
   return (
-    <WiredCard className="w-full" elevation={1}>
-      <h4>
-        <span className="mr-2 font-bold">org:</span>
-        <input
-          className="border-2"
-          type="text"
-          placeholder="org-name"
-          value={data.name}
-          onChange={onChange}
-        />
-        {/* <WiredInput placeholder="org-name" value={data.name} onChange={onChange} /> */}
+    <WiredCard className="w-full pb-4" elevation={1}>
+      <h4 className="my-4 pl-4">
+        <span
+          onClick={() => console.log(input.current)}
+          className="mr-2 font-bold"
+        >
+          org:
+        </span>
+        <wired-input placeholder="org-name" value={data.name} ref={input} />
       </h4>
       <section>
-        <div className="flex justify-around">
+        <div className="flex">
           {MEMBER_COLUMNS.map((col) => (
-            <div key={col.key} className="w-1/4 text-xl">
+            <div key={col.key} className={col.className}>
               {col.label}
             </div>
           ))}
         </div>
         <div>
-          {members.map((member) => (
-            <MemberForm
-              key={(member as Member).id}
-              data={member as Member}
-              memberChange={memberChange}
-            />
+          {data?.members?.map((member) => (
+            <MemberForm key={member} />
           ))}
         </div>
-        {child_orgs.length > 0 && (
+        {/* {child_orgs.length > 0 && (
           <WiredButton elevation={1} onClick={() => setExpand(!expand_child)}>
             {expand_child ? "-" : "+"}
           </WiredButton>
-        )}
-        <WiredButton elevation={1}>add</WiredButton>
+        )} */}
+        <WiredButton className="ml-4 mt-4" elevation={1}>add</WiredButton>
       </section>
-      {expand_child && child_orgs.length > 0 && (
+      {/* {expand && child_orgs.length > 0 && (
         <div className="pl-9">
           {child_orgs.map((org) => (
             <OrgCard
@@ -106,74 +87,30 @@ export const OrgCard: React.FC<{
             />
           ))}
         </div>
-      )}
+      )} */}
     </WiredCard>
   );
 };
 
 export const MemberForm: React.FC<{
-  data: Member;
-  memberChange: (member: Member) => void;
-}> = ({ data, memberChange }) => {
+  //   data: Member;
+  //   memberChange: (member: Member) => void;
+}> = (
+  {
+    /*memberChange*/
+  }
+) => {
   return (
-    <div className="flex justify-around">
-      <div className="w-1/4">
-        <input
-          onChange={(e) => {
-            const copy = { ...data };
-            /* @ts-ignore */
-            copy.name = e.target.value;
-            memberChange(copy);
-          }}
-          className="border-2"
-          type="text"
-          placeholder="member-name"
-          value={data.name}
-        />
-        {/* <WiredInput value={data.name} placeholder="member-name" /> */}
-      </div>
-      <div className="w-1/4">
-        <input
-          onChange={(e) => {
-            const copy = { ...data };
-            copy.age = Number(e.target.value);
-            memberChange(copy);
-          }}
-          className="border-2"
-          type="number"
-          placeholder="member-age"
-          value={data.age || 0}
-        />
-        {/* <WiredInput value={String(data.age)} placeholder="member-age" /> */}
-      </div>
-      <div className="w-1/4">
-        {/* <WiredCheckBox checked={data.status === "activated"} /> */}
-        <input
-          type="checkbox"
-          checked={data.status === "actived"}
-          onChange={(e) => {
-            console.log(e, "这里");
-            const checked = e.target.checked;
-            const copy = { ...data };
-            copy.status = checked ? "actived" : "inactivated";
-            memberChange(copy);
-          }}
-        />
-      </div>
-      <div className="w-1/4">
-        <input
-          type="checkbox"
-          checked={data.status === "actived"}
-          onChange={(e) => {
-            console.log(e, "这里");
-            const checked = e.target.checked;
-            const copy = { ...data };
-            copy.representation = checked;
-            memberChange(copy);
-          }}
-        />
-        {/* <WiredCheckBox disabled={data.status === 'activated'} /> */}
-      </div>
+    <div className="flex">
+      {MEMBER_COLUMNS.map((col) => (
+        <div key={col.key} className={col.className + ' justify-center flex items-center'}>
+          {col.type === "checkbox" ? (
+            <wired-checkbox checked={true}></wired-checkbox>
+          ) : (
+            <wired-input className="w-full max-w-full h-4 p-0" />
+          )}
+        </div>
+      ))}
     </div>
   );
 };
