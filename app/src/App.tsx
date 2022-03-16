@@ -1,9 +1,12 @@
 import React from "react";
-import { Data, Org, Member } from './dataService';
+import { Data, Org, Member, Controller } from './dataService';
 import { OrgCard } from "./components/OrgCard";
 import { WiredCard, WiredButton } from "react-wired-elements";
+
 const App: React.FC = () => {
   const data = new Data();
+  const controller = new Controller(data);
+
   const [orgState, setOrgState] = React.useState<Org[]>(data.orgData);
   const [memberState, setMemberState] = React.useState<Member[]>(data.memberData);
 
@@ -15,6 +18,9 @@ const App: React.FC = () => {
           .filter((org) => org.parent === null)
           .map((org: Org) => (
             <OrgCard
+              getMember={controller.findOrgMember}
+              getSubOrg={controller.findSubOrg}
+              addMember={controller.addMember}
               data={org}
               key={org.id}
             />
