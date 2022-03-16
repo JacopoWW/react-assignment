@@ -6,7 +6,7 @@ export interface Member {
   id: string;
   name: string;
   age?: number;
-  status: string;
+  status: 'inactivated' | 'activated';
   representation?: boolean;
 }
 
@@ -23,9 +23,9 @@ export class Controller {
   model: Data;
   constructor(model: Data) {
     this.model = model;
-    this.findOrgMember = this.findOrgMember.bind(this);
-    this.findSubOrg = this.findSubOrg.bind(this);
-    this.addMember = this.addMember.bind(this);
+    // this.findOrgMember = this.findOrgMember.bind(this);
+    // this.findSubOrg = this.findSubOrg.bind(this);
+    // this.addMember = this.addMember.bind(this);
   }
   findOrgMember(org: Org): Member[] {
     const members = org.members;
@@ -40,17 +40,18 @@ export class Controller {
   }
   addMember(org: Org): Member {
     const member = this.model.create('member');
-    if (org.members) {
-      org.members.push(member.id);
+    const o = _.clone(org);
+    if (o.members) {
+      o.members = o.members.concat(member.id);
     } else {
-      org.members = [member.id];
+      o.members = [member.id];
     }
+    this.model.put('org', o);
     return member;
   }
 }
 
 export type DataType = "member" | "org";
-
 export class Data {
   orgData: Org[];
   memberData: Member[];
@@ -58,7 +59,7 @@ export class Data {
   memberMap: Map<string, Member>;
   constructor() {
     this.orgData = _.cloneDeep(orgData);
-    this.memberData = _.cloneDeep(memberData);
+    this.memberData = _.cloneDeep(memberData as unknown as Member[]);
     this.orgMap = new Map(this.orgData.map((org) => [org.id, org]));
     this.memberMap = new Map(
       this.memberData.map((member) => [member.id, member])
@@ -68,29 +69,46 @@ export class Data {
   create(type: "org"): Org;
   create(type: DataType): Member | Org {
     if (type === "org") {
-      const id = `${type}-${this.orgData.length}`;
+      const id = `${type}-${this.orgData.length + 1}`;
       const org = {
         id,
-        name: "",
+        name: id,
         type: "",
-        parent: "",
+        parent: null,
         representation: "",
       };
       this.orgData.push(org);
+      this.orgMap.set(id, org);
       return org;
     } else {
-      const id = `${type}-${this.memberData.length}`;
+      const id = `${type}-${this.memberData.length + 1}`;
       const member = {
         id,
-        name: "",
-        status: "",
+        name: id,
+        status: 'inactivated',
         representation: false,
-      };
+      } as Member;
       this.memberData.push(member);
+      this.memberMap.set(id, member);
       return member;
     }
   }
-  put() {}
+  put(type: "member", data: Member): Member | undefined;
+  put(type: "org", data: Org): Org | undefined;
+  put(type: DataType, data: Org | Member): Member | Org | undefined {
+    const d = _.clone(data);
+    if (type === 'member') {
+      const idx = _.findIndex(this.memberData, ['id', d.id]);
+      this.memberData[idx] = d as Member;
+      this.memberMap.set(d.id, d as Member);
+      return d;
+    } else {
+      const idx = _.findIndex(this.orgData, ['id', d.id]);
+      this.orgData[idx] = d as Org;
+      this.orgMap.set(d.id, d as Org);
+      return d;
+    }
+  }
   delete() {}
   get(type: "member", id: string): Member | undefined;
   get(type: "org", id: string): Org | undefined;
@@ -102,4 +120,15 @@ export class Data {
     }
   }
   save() {}
+}
+
+
+export interface AppContext {
+  memberState: Member[];
+  orgState: Org[];
+  editMember: <T extends keyof Member>(member: Member, key:T, val: Member[T]) => void;
+  editOrg: () => void;
+  addMember: (org: Org) => void;
+  getMembers: (org: Org) => Member[];
+  getSubOrgs: (org: Org) => Org[];
 }
