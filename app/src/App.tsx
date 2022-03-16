@@ -22,7 +22,6 @@ export function useOrg(data: Data, ctr: Controller): AppContext {
         data.put("member", member);
         const newMemberData = data.memberData.slice();
         setMemberState(newMemberData);
-        console.log("修改后的edit", _.find(newMemberData, ["id", memberId]));
       }
     },
     editOrg(orgId, key, val) {
@@ -33,13 +32,6 @@ export function useOrg(data: Data, ctr: Controller): AppContext {
         data.put("org", org);
         const newOrgData = data.orgData.slice();
         setOrgState(newOrgData);
-        console.log(
-          "修改后的edit",
-          _.find(newOrgData, ["id", o.id]),
-          orgId,
-          key,
-          val
-        );
       }
     },
     addMember(orgId) {
@@ -79,7 +71,6 @@ export function useOrg(data: Data, ctr: Controller): AppContext {
 
 const App: React.FC = () => {
   const config = useMemo(() => {
-    console.log("运行了新的memo");
     const data = new Data();
     const ctr = new Controller(data);
     return {

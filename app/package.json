@@ -14,7 +14,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
+    "test": "jest",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -36,15 +36,20 @@
     ]
   },
   "devDependencies": {
-    "@types/lodash": "^4.14.180",
+    "@babel/core": "^7.17.7",
+    "@babel/preset-env": "^7.16.11",
+    "@babel/preset-typescript": "^7.16.7",
     "@testing-library/jest-dom": "^5.16.1",
     "@testing-library/react": "^12.1.2",
     "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^27.0.3",
+    "@types/jest": "^27.4.1",
+    "@types/lodash": "^4.14.180",
     "@types/node": "^16.11.13",
     "@types/react": "^17.0.37",
     "@types/react-dom": "^17.0.11",
     "autoprefixer": "^10.4.0",
+    "babel-jest": "^27.5.1",
+    "jest": "^27.5.1",
     "postcss": "^8.4.5",
     "tailwindcss": "^3.0.5"
   }
