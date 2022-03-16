@@ -1,6 +1,6 @@
-import React, { ChangeEvent, useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Org, Member, AppContext } from "../dataService";
-import { WiredButton, WiredCard, WiredCheckBox } from "react-wired-elements";
+import { WiredButton, WiredCard } from "react-wired-elements";
 import _ from "lodash";
 
 export interface MemberColumn {
@@ -15,12 +15,28 @@ export interface MemberColumn {
 }
 
 const MEMBER_COLUMNS: MemberColumn[] = [
-  { label: "user name", key: "name", className: "w-40 pl-4" },
+  {
+    label: "user name",
+    key: "name",
+    props(member) {
+      const p = {
+        value: _.get(member, this.key, ""),
+      } as Partial<HTMLInputElement>;
+      return p;
+    },
+    className: "w-40 pl-4",
+  },
   {
     label: "age",
     key: "age",
     className: "w-40 pl-4",
-    props: { type: "number" },
+    props(member) {
+      const p = {
+        type: "number",
+        value: _.get(member, this.key, ""),
+      } as Partial<HTMLInputElement>;
+      return p;
+    },
     convertor: Number,
   },
   {
@@ -33,8 +49,11 @@ const MEMBER_COLUMNS: MemberColumn[] = [
     },
     props(member, org) {
       const p = {} as Partial<HTMLInputElement>;
-      if (member.status === 'activated') {
+      if (member.status === "activated") {
         p.checked = true;
+      }
+      if (org.representation === member.id) {
+        p.disabled = true;
       }
       return p;
     },
@@ -46,6 +65,8 @@ const MEMBER_COLUMNS: MemberColumn[] = [
     type: "checkbox",
     props(member, org) {
       const p = {} as Partial<HTMLInputElement>;
+      member.status === "inactivated" &&
+        (p.disabled = member.status === "inactivated");
       if (org.representation === member.id) {
         p.checked = true;
       }
@@ -60,25 +81,38 @@ export const OrgCard: React.FC<{
   getSubOrgs: AppContext["getSubOrgs"];
   addMember: AppContext["addMember"];
   editMember: AppContext["editMember"];
-}> = ({ org, getMembers, getSubOrgs, addMember, editMember }) => {
+  editOrg: AppContext["editOrg"];
+}> = (props) => {
+  const { org, getMembers, getSubOrgs, addMember, editMember, editOrg } = props;
   const [expand, setExpand] = React.useState<boolean>(false);
-  const members = getMembers(org);
+  const members = getMembers(org.id);
 
   const input = React.createRef<HTMLInputElement>();
 
-  useEffect(() => {
+  useEffect(() => { // 这里的状态都是在didMount时的， 只能用索引，不能用指针。
     input.current?.addEventListener("input", (e) => {
-      console.log("输入了", input.current?.value);
+      const input = e.target as HTMLInputElement;
+      const orgId = org.id;
+      requestAnimationFrame(() => {
+        editOrg(orgId, "name", input.value);
+      });
     });
-  }, []);
+  }, [input, editOrg, org.id]);
+  useEffect(() => {
+    // 可能shadowElement 不响应react setAttribute， 手动赋值强制状态统一
+    _.set(input.current as HTMLInputElement, "value", org.name);
+  }, [org, input]);
 
-  const subOrgs = getSubOrgs(org);
+  const subOrgs = useMemo(() => getSubOrgs(org.id), [org.id, getSubOrgs]);
 
   return (
     <WiredCard className="w-full pb-4" elevation={1}>
       <h4 className="my-4 pl-4">
         <span className="mr-2 font-bold">org:</span>
-        <wired-input placeholder="org-name" value={org.name} ref={input} />
+        <wired-input class="mr-5" placeholder="org-name" ref={input} />
+        <WiredButton no-caps elevation={1} onClick={() => addMember(org.id)}>
+          add Member
+        </WiredButton>
       </h4>
       <section>
         <div className="flex">
@@ -104,25 +138,15 @@ export const OrgCard: React.FC<{
               {expand ? "-" : "+"}
             </WiredButton>
           )}
-          <WiredButton elevation={1} onClick={() => addMember(org)}>
-            add
-          </WiredButton>
         </div>
       </section>
-      {/* {expand && child_orgs.length > 0 && (
+      {expand && subOrgs.length > 0 && (
         <div className="pl-9">
-          {child_orgs.map((org) => (
-            <OrgCard
-              key={org.id}
-              data={org}
-              findChildOrg={findChildOrg}
-              map2Member={map2Member}
-              memberChange={memberChange}
-              orgChange={orgChange}
-            />
+          {subOrgs.map((subOrg) => (
+            <OrgCard key={org.id} {...props} org={subOrg} />
           ))}
         </div>
-      )} */}
+      )}
     </WiredCard>
   );
 };
@@ -131,25 +155,39 @@ export const MemberForm: React.FC<{
   member: Member;
   org: Org;
   onEdit: AppContext["editMember"];
-}> = ({ member, org, onEdit }) => {
+}> = (props) => {
+  const { member, org, onEdit } = props;
   const inputRefs = MEMBER_COLUMNS.map(() =>
     React.createRef<HTMLInputElement>()
   );
-
-  useEffect(() => {
+  useEffect(() => { // 这里的状态都是在didMount时的， 只能用索引，不能用指针。
     inputRefs.forEach((ref, idx) => {
       const col = MEMBER_COLUMNS[idx];
+      const memberId = member.id;
+      const orgId = org.id;
       ref.current?.addEventListener("input", (e) => {
         requestAnimationFrame(() => {
-            const input = e.target as HTMLInputElement;
-            const value = col.convertor
-              ? col.convertor(input.value, input)
-              : input.value;
-            onEdit(member, col.key, value);
-        })
+          const input = e.target as HTMLInputElement;
+          const value = col.convertor
+            ? col.convertor(input.value, input)
+            : input.value;
+          onEdit(memberId, orgId, col.key, value);
+        });
       });
     });
-  }, []);
+  }, [inputRefs, member.id, onEdit, org.id]);
+  useEffect(() => {
+    // 可能shadowElement 不响应react setAttribute， 手动赋值强制状态统一
+    inputRefs.forEach((ref, idx) => {
+      const ele = ref.current;
+      const col = MEMBER_COLUMNS[idx];
+      if (ele) {
+        const mapProps =
+          typeof col.props === "function" ? col.props(member, org) : col.props;
+        Object.assign(ele, mapProps);
+      }
+    });
+  }, [org, member, inputRefs]);
   return (
     <div className="flex">
       {MEMBER_COLUMNS.map((col, idx) => {
@@ -171,7 +209,6 @@ export const MemberForm: React.FC<{
                 {...mapProps}
                 name={col.key}
                 ref={inputRefs[idx]}
-                value={_.get(member, col.key)}
                 className="w-full max-w-full h-4 p-0"
               />
             )}

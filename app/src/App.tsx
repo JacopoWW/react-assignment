@@ -1,53 +1,83 @@
 import React, { useMemo } from "react";
-import { Data, Member, Controller, Org, AppContext } from './dataService';
+import { Data, Member, Controller, Org, AppContext } from "./dataService";
 import { OrgCard } from "./components/OrgCard";
 import { WiredCard, WiredButton } from "react-wired-elements";
 import _ from "lodash";
 
 export function useOrg(data: Data, ctr: Controller): AppContext {
   const [orgState, setOrgState] = React.useState<Org[]>(data.orgData);
-  const [memberState, setMemberState] = React.useState<Member[]>(data.memberData);
-  
-  return {
-    editMember(member, key, val) {
-      const m = _.clone(member);
-      m[key] = val;
-      data.put('member', m);
-      const newMemberData = data.memberData.slice();
-      setMemberState(newMemberData);
-      console.log('修改后的edit', _.find(newMemberData, ['id', m.id]))
-    },
-    editOrg() {
+  const [memberState, setMemberState] = React.useState<Member[]>(
+    data.memberData
+  );
 
+  const context: AppContext = {
+    // this解构掉后为获取对象上其他method，声明变量
+    editMember(memberId, orgId, key, val) {
+      const m = data.get('member', memberId);
+      if (key === "representation") {
+        context.editOrg(orgId, key, memberId);
+      } else if (m) {
+        const member = _.clone(m);
+        member[key] = val;
+        data.put("member", member);
+        const newMemberData = data.memberData.slice();
+        setMemberState(newMemberData);
+        console.log("修改后的edit", _.find(newMemberData, ["id", memberId]));
+      }
     },
-    addMember(org) {
-      ctr.addMember(org);
-      const newMemberData = data.memberData.slice();
+    editOrg(orgId, key, val) {
+      const o = data.get('org', orgId);
+      if (o) {
+        const org = _.clone(o);
+        org[key] = val;
+        data.put("org", org);
+        const newOrgData = data.orgData.slice();
+        setOrgState(newOrgData);
+        console.log(
+          "修改后的edit",
+          _.find(newOrgData, ["id", o.id]),
+          orgId,
+          key,
+          val
+        );
+      }
+    },
+    addMember(orgId) {
+      if (ctr.addMember(orgId)) {
+        const newMemberData = data.memberData.slice();
+        const newOrgState = data.orgData.slice();
+        setMemberState(newMemberData);
+        setOrgState(newOrgState);
+      };
+    },
+    addOrg() {
+      ctr.addOrg();
       const newOrgState = data.orgData.slice();
-      setMemberState(newMemberData);
       setOrgState(newOrgState);
     },
-    getMembers(org) {
-      return ctr.findOrgMember(org);
+    getMembers(orgId) {
+      return ctr.findOrgMember(orgId);
     },
-    getSubOrgs(org) {
-      return ctr.findSubOrg(org);
+    getSubOrgs(orgId) {
+      return ctr.findSubOrg(orgId);
     },
     memberState,
     orgState,
-  }
+  };
+  return context;
 }
 
 const App: React.FC = () => {
   const config = useMemo(() => {
+    console.log("运行了新的memo");
     const data = new Data();
     const ctr = new Controller(data);
     return {
       data,
       ctr,
     };
-  }, [])
-  
+  }, []);
+
   const context = useOrg(config.data, config.ctr);
 
   return (
@@ -62,33 +92,18 @@ const App: React.FC = () => {
               getSubOrgs={context.getSubOrgs}
               addMember={context.addMember}
               editMember={context.editMember}
+              editOrg={context.editOrg}
               org={org}
               key={org.id}
             />
           ))}
       </div>
       <div>
-        <WiredButton
-          onClick={() => {
-          }}
-          className="text-4xl"
-        >Add
-        </WiredButton>
+        <WiredButton onClick={context.addOrg} className="text-4xl">Add</WiredButton>
       </div>
       <div className="flex justify-end">
-        <WiredButton
-          className="text-2xl mr-4"
-        >
-          Cancel
-        </WiredButton>
-        <WiredButton
-          onClick={() => {
-
-          }}
-          className="text-2xl"
-        >
-          Save
-        </WiredButton>
+        <WiredButton className="text-2xl mr-4">Cancel</WiredButton>
+        <WiredButton className="text-2xl">Save</WiredButton>
       </div>
     </WiredCard>
   );

@@ -27,27 +27,31 @@ export class Controller {
     // this.findSubOrg = this.findSubOrg.bind(this);
     // this.addMember = this.addMember.bind(this);
   }
-  findOrgMember(org: Org): Member[] {
-    const members = org.members;
-    if (members && members.length > 0) {
-      return members.map(m => this.model.get('member', m) as Member).filter(Boolean);
+  findOrgMember(orgId: string): Member[] {
+    const org = this.model.get('org', orgId);
+    if (org && org.members && org.members.length > 0) {
+      return org.members.map(m => this.model.get('member', m) as Member).filter(Boolean);
     } else {
       return [];
     }
   }
-  findSubOrg(org: Org): Org[] {
-    return _.filter(this.model.orgData, ['parent', org.id]);
+  findSubOrg(orgId: string): Org[] {
+    return _.filter(this.model.orgData, ['parent', orgId]);
   }
-  addMember(org: Org): Member {
+  addMember(orgId: string): Member | undefined {
     const member = this.model.create('member');
-    const o = _.clone(org);
-    if (o.members) {
+    const o = this.model.get('org', orgId);
+    if (o && o.members) {
       o.members = o.members.concat(member.id);
-    } else {
+      this.model.put('org', o);
+    } else if (o) {
       o.members = [member.id];
-    }
-    this.model.put('org', o);
+      this.model.put('org', o);
+    } 
     return member;
+  }
+  addOrg(): Org {
+    return this.model.create('org');
   }
 }
 
@@ -126,9 +130,10 @@ export class Data {
 export interface AppContext {
   memberState: Member[];
   orgState: Org[];
-  editMember: <T extends keyof Member>(member: Member, key:T, val: Member[T]) => void;
-  editOrg: () => void;
-  addMember: (org: Org) => void;
-  getMembers: (org: Org) => Member[];
-  getSubOrgs: (org: Org) => Org[];
+  editMember: <T extends keyof Member>(memberId: string, orgId: string, key:T, val: Member[T]) => void;
+  editOrg: <T extends keyof Org>(orgId: string, key: T, val: Org[T]) => void;
+  addMember: (org: string) => void;
+  addOrg: () => void;
+  getMembers: (orgId: string) => Member[];
+  getSubOrgs: (orgId: string) => Org[];
 }
