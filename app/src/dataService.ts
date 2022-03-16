@@ -2,6 +2,9 @@ import orgData from "./data/orgs.json";
 import memberData from "./data/members.json";
 import _ from "lodash";
 
+let curOrgDataState = _.cloneDeep(orgData as Org[]);
+let curMemberDataState = _.cloneDeep(memberData as Member[]);
+
 export interface Member {
   id: string;
   name: string;
@@ -62,8 +65,8 @@ export class Data {
   orgMap: Map<string, Org>;
   memberMap: Map<string, Member>;
   constructor() {
-    this.orgData = _.cloneDeep(orgData);
-    this.memberData = _.cloneDeep(memberData as unknown as Member[]);
+    this.orgData = _.cloneDeep(curOrgDataState);
+    this.memberData = _.cloneDeep(curMemberDataState as unknown as Member[]);
     this.orgMap = new Map(this.orgData.map((org) => [org.id, org]));
     this.memberMap = new Map(
       this.memberData.map((member) => [member.id, member])
@@ -123,7 +126,20 @@ export class Data {
       return this.orgMap.get(id);
     }
   }
-  save() {}
+
+  reset() {
+    this.orgData = _.cloneDeep(curOrgDataState);
+    this.memberData = _.cloneDeep(curMemberDataState as unknown as Member[]);
+    this.orgMap = new Map(this.orgData.map((org) => [org.id, org]));
+    this.memberMap = new Map(
+      this.memberData.map((member) => [member.id, member])
+    );
+  }
+
+  save() {
+    curOrgDataState = _.cloneDeep(this.orgData);
+    curMemberDataState = _.cloneDeep(this.memberData);
+  }
 }
 
 
@@ -136,4 +152,6 @@ export interface AppContext {
   addOrg: () => void;
   getMembers: (orgId: string) => Member[];
   getSubOrgs: (orgId: string) => Org[];
+  reset: () => void;
+  save: () => void;
 }

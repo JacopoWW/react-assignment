@@ -33,6 +33,7 @@ const MEMBER_COLUMNS: MemberColumn[] = [
     props(member) {
       const p = {
         type: "number",
+        min: '0',
         value: _.get(member, this.key, ""),
       } as Partial<HTMLInputElement>;
       return p;
@@ -97,11 +98,11 @@ export const OrgCard: React.FC<{
         editOrg(orgId, "name", input.value);
       });
     });
-  }, [input, editOrg, org.id]);
+  }, [org.id]);
   useEffect(() => {
     // 可能shadowElement 不响应react setAttribute， 手动赋值强制状态统一
     _.set(input.current as HTMLInputElement, "value", org.name);
-  }, [org, input]);
+  }, [org]);
 
   const subOrgs = useMemo(() => getSubOrgs(org.id), [org.id, getSubOrgs]);
 
@@ -175,7 +176,7 @@ export const MemberForm: React.FC<{
         });
       });
     });
-  }, [inputRefs, member.id, onEdit, org.id]);
+  }, [member.id, org.id]);
   useEffect(() => {
     // 可能shadowElement 不响应react setAttribute， 手动赋值强制状态统一
     inputRefs.forEach((ref, idx) => {
@@ -187,7 +188,7 @@ export const MemberForm: React.FC<{
         Object.assign(ele, mapProps);
       }
     });
-  }, [org, member, inputRefs]);
+  }, [org, member]);
   return (
     <div className="flex">
       {MEMBER_COLUMNS.map((col, idx) => {

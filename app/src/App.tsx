@@ -61,6 +61,16 @@ export function useOrg(data: Data, ctr: Controller): AppContext {
     getSubOrgs(orgId) {
       return ctr.findSubOrg(orgId);
     },
+    reset() {
+      data.reset();
+      setOrgState(data.orgData);
+      setMemberState(data.memberData);
+      alert('数据已恢复到默认！');
+    },
+    save() {
+      data.save();
+      alert('数据已保存！');
+    },
     memberState,
     orgState,
   };
@@ -102,8 +112,8 @@ const App: React.FC = () => {
         <WiredButton onClick={context.addOrg} className="text-4xl">Add</WiredButton>
       </div>
       <div className="flex justify-end">
-        <WiredButton className="text-2xl mr-4">Cancel</WiredButton>
-        <WiredButton className="text-2xl">Save</WiredButton>
+        <WiredButton onClick={context.reset} className="text-2xl mr-4">Cancel</WiredButton>
+        <WiredButton onClick={context.save} className="text-2xl">Save</WiredButton>
       </div>
     </WiredCard>
   );
