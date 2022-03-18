@@ -14,12 +14,12 @@
 #### Spec1
 
 - [✅] * User can modify organization details (name).
-- [❌] * User can move an organization under the other organization.
+- [🟨] * (debugging)User can move an organization under the other organization.
 - [✅] * user can create an organization.
 
 #### Spec2
 - [✅] * User can modify member info (name, age or status).
-- [❌] * User can move a member to the other organization.
+- [🟨] * (debugging) User can move a member to the other organization.
 - [✅] * User can create a member.
 - [✅] * User can set a member as the representation, if the member is activated.
 
