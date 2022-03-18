@@ -149,7 +149,7 @@ export interface AppContext {
   editMember: <T extends keyof Member>(memberId: string, orgId: string, key:T, val: Member[T]) => void;
   editOrg: <T extends keyof Org>(orgId: string, key: T, val: Org[T]) => void;
   addMember: (org: string) => void;
-  addOrg: () => void;
+  addOrg: () => Org;
   getMembers: (orgId: string) => Member[];
   getSubOrgs: (orgId: string) => Org[];
   reset: () => void;

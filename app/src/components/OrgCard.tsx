@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from "react";
 import { Org, Member, AppContext } from "../dataService";
 import { WiredButton, WiredCard } from "react-wired-elements";
 import _ from "lodash";
+import classNames from "classnames";
 
 export interface MemberColumn {
   label: string;
@@ -33,7 +34,7 @@ const MEMBER_COLUMNS: MemberColumn[] = [
     props(member) {
       const p = {
         type: "number",
-        min: '0',
+        min: "0",
         value: _.get(member, this.key, ""),
       } as Partial<HTMLInputElement>;
       return p;
@@ -76,21 +77,52 @@ const MEMBER_COLUMNS: MemberColumn[] = [
   },
 ];
 
-export const OrgCard: React.FC<{
+export interface OrgCardProps {
   org: Org;
   getMembers: AppContext["getMembers"];
   getSubOrgs: AppContext["getSubOrgs"];
   addMember: AppContext["addMember"];
   editMember: AppContext["editMember"];
   editOrg: AppContext["editOrg"];
-}> = (props) => {
-  const { org, getMembers, getSubOrgs, addMember, editMember, editOrg } = props;
+  renderChildCards?: (p: OrgCardProps, orgs: Org[]) => React.ReactNode;
+  renderChildFields?: (p: OrgCardProps, members: Member[]) => React.ReactNode;
+}
+
+export const OrgCard: React.FC<OrgCardProps> = (props) => {
+  const {
+    org,
+    getMembers,
+    getSubOrgs,
+    addMember,
+    editOrg,
+    renderChildCards = (p, orgs) => (
+      <div className="grow">
+        {orgs.map((sub) => (
+          <OrgCard key={org.id} {...props} org={sub} />
+        ))}
+      </div>
+    ),
+    renderChildFields = (p, members) => (
+      <div className="grow">
+        {members.map((member) => (
+          <MemberForm
+            key={member.id}
+            member={member}
+            org={p.org}
+            onEdit={p.editMember}
+          />
+        ))}
+      </div>
+    ),
+  } = props;
+
   const [expand, setExpand] = React.useState<boolean>(false);
   const members = getMembers(org.id);
 
-  const input = React.createRef<HTMLInputElement>();
+  const input = React.useRef<HTMLInputElement>();
 
-  useEffect(() => { // 这里的状态都是在didMount时的， 只能用索引，不能用指针。
+  useEffect(() => {
+    // 这里的状态都是在didMount时的， 只能用索引，不能用指针。
     input.current?.addEventListener("input", (e) => {
       const input = e.target as HTMLInputElement;
       const orgId = org.id;
@@ -108,7 +140,7 @@ export const OrgCard: React.FC<{
 
   return (
     <WiredCard className="w-full pb-4" elevation={1}>
-      <h4 className="my-4 pl-4">
+      <h4 className="my-4 ml-20">
         <span className="mr-2 font-bold">org:</span>
         <wired-input class="mr-5" placeholder="org-name" ref={input} />
         <WiredButton no-caps elevation={1} onClick={() => addMember(org.id)}>
@@ -116,52 +148,44 @@ export const OrgCard: React.FC<{
         </WiredButton>
       </h4>
       <section>
-        <div className="flex">
+        <div className={classNames("flex", {
+          hidden: !members.length,
+        })}>
           {MEMBER_COLUMNS.map((col) => (
             <div key={col.key} className={col.className}>
               {col.label}
             </div>
           ))}
         </div>
-        <div>
-          {members.map((member) => (
-            <MemberForm
-              key={member.id}
-              member={member}
-              org={org}
-              onEdit={editMember}
-            />
-          ))}
-        </div>
-        <div className="flex ml-4 mt-4 gap-4">
+        {renderChildFields(props, members)}
+        <div className="flex pl-4 mt-4 gap-4 items-start">
           {subOrgs.length > 0 && (
             <WiredButton elevation={1} onClick={() => setExpand(!expand)}>
-              {expand ? "-" : "+"}
+              <span className="px-4">{expand ? "-" : "+"}</span>
             </WiredButton>
           )}
+          <div className="grow">
+            {expand && subOrgs.length > 0 && renderChildCards(props, subOrgs)}
+          </div>
         </div>
       </section>
-      {expand && subOrgs.length > 0 && (
-        <div className="pl-9">
-          {subOrgs.map((subOrg) => (
-            <OrgCard key={org.id} {...props} org={subOrg} />
-          ))}
-        </div>
-      )}
     </WiredCard>
   );
 };
 
-export const MemberForm: React.FC<{
+export interface MemberFormProps {
   member: Member;
   org: Org;
   onEdit: AppContext["editMember"];
-}> = (props) => {
+}
+
+export const MemberForm: React.FC<MemberFormProps> = (props) => {
   const { member, org, onEdit } = props;
   const inputRefs = MEMBER_COLUMNS.map(() =>
     React.createRef<HTMLInputElement>()
   );
-  useEffect(() => { // 这里的状态都是在didMount时的， 只能用索引，不能用指针。
+  useEffect(() => {
+    // 这里的状态都是在didMount时的， 只能用索引，不能用指针。
     inputRefs.forEach((ref, idx) => {
       const col = MEMBER_COLUMNS[idx];
       const memberId = member.id;
@@ -197,7 +221,7 @@ export const MemberForm: React.FC<{
         return (
           <div
             key={col.key}
-            className={col.className + " justify-center flex items-center"}
+            className={classNames(col.className , "justify-center flex items-center")}
           >
             {col.type === "checkbox" ? (
               <wired-checkbox
