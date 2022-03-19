@@ -119,11 +119,11 @@ export const OrgCard: React.FC<OrgCardProps> = (props) => {
   const [expand, setExpand] = React.useState<boolean>(false);
   const members = getMembers(org.id);
 
-  const input = React.useRef<HTMLInputElement>();
+  const nameInput = React.useRef<HTMLInputElement>();
 
   useEffect(() => {
     // 这里的状态都是在didMount时的， 只能用索引，不能用指针。
-    input.current?.addEventListener("input", (e) => {
+    nameInput.current?.addEventListener("input", (e) => {
       const input = e.target as HTMLInputElement;
       const orgId = org.id;
       requestAnimationFrame(() => {
@@ -133,7 +133,7 @@ export const OrgCard: React.FC<OrgCardProps> = (props) => {
   }, [org.id]);
   useEffect(() => {
     // 可能shadowElement 不响应react setAttribute， 手动赋值强制状态统一
-    _.set(input.current as HTMLInputElement, "value", org.name);
+    _.set(nameInput.current as HTMLInputElement, "value", org.name);
   }, [org]);
 
   const subOrgs = useMemo(() => getSubOrgs(org.id), [org.id, getSubOrgs]);
@@ -142,7 +142,7 @@ export const OrgCard: React.FC<OrgCardProps> = (props) => {
     <WiredCard className="w-full pb-4" elevation={1}>
       <h4 className="my-4 ml-20">
         <span className="mr-2 font-bold">org:</span>
-        <wired-input class="mr-5" placeholder="org-name" ref={input} />
+        <wired-input class="mr-5" placeholder="org-name" ref={nameInput} />
         <WiredButton no-caps elevation={1} onClick={() => addMember(org.id)}>
           add Member
         </WiredButton>
@@ -158,7 +158,7 @@ export const OrgCard: React.FC<OrgCardProps> = (props) => {
           ))}
         </div>
         {renderChildFields(props, members)}
-        <div className="flex pl-4 mt-4 gap-4 items-start">
+        <div className="flex pl-4 mt-4 gap-4 items-start overflow-x-hidden">
           {subOrgs.length > 0 && (
             <WiredButton elevation={1} onClick={() => setExpand(!expand)}>
               <span className="px-4">{expand ? "-" : "+"}</span>
@@ -221,7 +221,7 @@ export const MemberForm: React.FC<MemberFormProps> = (props) => {
         return (
           <div
             key={col.key}
-            className={classNames(col.className , "justify-center flex items-center")}
+            className={classNames(col.className , "justify-center flex items-center overflow-x-visible")}
           >
             {col.type === "checkbox" ? (
               <wired-checkbox

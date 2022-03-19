@@ -1,9 +1,16 @@
 import React, { useMemo, useState } from "react";
-import { Data, Member, Controller, Org, AppContext, DataType } from "./dataService";
+import {
+  Data,
+  Member,
+  Controller,
+  Org,
+  AppContext,
+  DataType,
+} from "./dataService";
 import { MemberForm, OrgCard, OrgCardProps } from "./components/OrgCard";
 import { WiredCard, WiredButton } from "react-wired-elements";
 import _ from "lodash";
-import { DragDropContext, DropResult, DragStart } from "react-beautiful-dnd";
+import { DragDropContext, DropResult, DragStart, DragUpdate } from "react-beautiful-dnd";
 import { renderWithDroppable, withDraggable } from "./components/DragTool";
 import classNames from "classnames";
 
@@ -16,7 +23,7 @@ export function useOrg(data: Data, ctr: Controller): AppContext {
   const context: AppContext = {
     // this解构掉后为获取对象上其他method，声明变量
     editMember(memberId, orgId, key, val) {
-      console.log('编辑了Member')
+      console.log("编辑了Member");
       const m = data.get("member", memberId);
       if (key === "representation") {
         context.editOrg(orgId, key, memberId);
@@ -26,11 +33,11 @@ export function useOrg(data: Data, ctr: Controller): AppContext {
         data.put("member", member);
         const newMemberData = data.memberData.slice();
         setMemberState(newMemberData);
-        console.log('修改后', member.name)
+        console.log("修改后", member.name);
       }
     },
     editOrg(orgId, key, val) {
-      console.log('编辑了org')
+      console.log("编辑了org");
       const o = data.get("org", orgId);
       if (o) {
         const org = _.clone(o);
@@ -76,8 +83,16 @@ export function useOrg(data: Data, ctr: Controller): AppContext {
   return context;
 }
 
-const DraggableOrgCard = withDraggable(OrgCard);
-const DraggableMemberForm = withDraggable(MemberForm);
+const DraggableOrgCard = withDraggable(OrgCard, (provide, snapshot) => ({
+  className: classNames('relative bg-white overflow-x-visible', {
+    "bg-blue-200": snapshot.isDragging,
+  }),
+}));
+const DraggableMemberForm = withDraggable(MemberForm, (provide, snapshot) => ({
+  className: classNames('flex overflow-x-visible', {
+    "bg-blue-200": snapshot.isDragging,
+  }),
+}));
 
 const App: React.FC = () => {
   const config = useMemo(() => {
@@ -89,16 +104,25 @@ const App: React.FC = () => {
     };
   }, []);
   const context = useOrg(config.data, config.ctr);
-  const [rootOrgList, setRootOrgList] = useState(context.orgState.filter((org) => org.parent === null).map(org => org.id));
-  const [draggingState, setDragSate] = useState({
-    member: false,
-    org: false,
-  });
-
+  const [rootOrgList, setRootOrgList] = useState(
+    context.orgState.filter((org) => org.parent === null).map((org) => org.id)
+  );
+  // const [draggingState, setDragSate] = useState({
+  //   member: false,
+  //   org: false,
+  // });
 
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
-    console.log(result, '这里是目标', destination, '这里是七点', source, 'draggableId', draggableId);
+    console.log(
+      result,
+      "这里是目标",
+      destination,
+      "这里是起点",
+      source,
+      "draggableId",
+      draggableId
+    );
     if (!destination) {
       return;
     }
@@ -109,7 +133,10 @@ const App: React.FC = () => {
     ) {
       return;
     }
-    if (source.droppableId === 'main-1' && source.droppableId === destination.droppableId) {
+    if (
+      source.droppableId === "main-1" &&
+      source.droppableId === destination.droppableId
+    ) {
       const newRootList = rootOrgList.slice();
       const sourceItem = newRootList[source.index];
       newRootList.splice(source.index, 1);
@@ -117,19 +144,28 @@ const App: React.FC = () => {
       setRootOrgList(newRootList);
     }
 
-
-    setDragSate({
-      member: false,
-      org: false,
-    });
+    // setDragSate({
+    //   member: false,
+    //   org: false,
+    // });
   };
 
   const onBeforeDragStart = (info: DragStart) => {
-    const [type, idx] = info.draggableId?.split('-');
-    const newDragState = _.clone(draggingState);
-    newDragState[type as DataType] = true;
-    console.log('拖动之前', info, type, newDragState);
-    requestAnimationFrame(() => setDragSate(newDragState));
+    const arg = info.draggableId?.split("-");
+    console.log('drag开始了', arg, JSON.stringify(info))
+    // const newDragState = _.clone(draggingState);
+    // newDragState[type as DataType] = true;
+    // console.log('拖动之前', info, type, newDragState);
+    // requestAnimationFrame(() => setDragSate(newDragState));
+  };
+
+  const onDragStart = (info: DragStart) => {
+    const arg = info.draggableId?.split("-");
+    console.log('drag开始', arg, JSON.stringify(info))
+  }
+  const onDragUpdate = (info: DragUpdate) => {
+    const arg = info.draggableId?.split('-');
+    console.log('drag状态更新', arg, JSON.stringify(info))
   }
 
   // const check = React.useRef<HTMLInputElement>();
@@ -140,97 +176,146 @@ const App: React.FC = () => {
   //     toggleDraggle(checkbox?.checked || false);
   //   });
   // }, []);
-  console.log('app重新渲染了', JSON.stringify(draggingState))
+  console.log("app重新渲染了", undefined ?? 123, true ?? 123);
   return (
-    <WiredCard className="w-full p-4 relative" elevation={1}>
-      <h4 className="flex items-center text-5xl my-5">Org Management</h4>
-      <DragDropContext onDragEnd={onDragEnd} onBeforeDragStart={onBeforeDragStart}>
-        <div className="flex flex-col">
-          {renderWithDroppable({
-            droppableId:"main-1",
-            direction:"vertical",
-            isDropDisabled: draggingState.member,
-          }, () => rootOrgList.map((orgId: string, index) => {
-            const org = config.data.get('org', orgId) as Org;
-            const renderChildCards: OrgCardProps['renderChildCards'] = renderWithDroppable({
-              droppableId: `${org.id}-org-drop`,
-              direction: 'vertical',
-              isDropDisabled: draggingState.member,
-            }, (provided, snapshot, p, orgs) => {
-              return orgs.map((sub, index) => <DraggableOrgCard
-                compProps={{
-                  ...p,
-                  org: sub,
-                }}
-                key={sub.id}
-                draggableId={sub.id}
-                index={index}
-                handler={{
-                  className: 'absolute w-10 h-10 top-7 left-5 bg-orange-300 rounded-lg',
-                }}
-              />);
-            })
-            const renderChildFields: OrgCardProps['renderChildFields'] = renderWithDroppable({
-              droppableId: `${org.id}-member-drop`,
-              direction: 'vertical',
-              isDropDisabled: draggingState.org,
-            }, (provide, snap, p, members) => {
-              return members.map((member, index) => <DraggableMemberForm
-                key={member.id}
-                compProps={{
-                  member,
-                  org: p.org,
-                  onEdit: p.editMember,
-                }}
-                handler={{
-                  className: classNames('w-8 h-8 rounded-lg bg-red-300'),
-                }}
-                draggableId={member.id}
-                index={index}
-              />)
-            })
-            return (
-              <DraggableOrgCard
-                compProps={{
-                  getMembers:context.getMembers,
-                  getSubOrgs:context.getSubOrgs,
-                  addMember:context.addMember,
-                  editMember:context.editMember,
-                  editOrg:context.editOrg,
-                  org: org,
-                  renderChildCards,
-                  renderChildFields,
-                }}
-                isDragDisabled={draggingState.member}
-                handler={{
-                  className: 'absolute w-10 h-10 top-7 left-5 bg-orange-300 rounded-lg',
-                }}
-                key={orgId}
-                draggableId={orgId}
-                index={index}
-              />
-            )
-          })
-          )()}
+    <WiredCard
+      className="app grid grid-cols-1 grid-rows-1 relative h-[100vh] w-full p-8 bg-white"
+      elevation={1}
+    >
+      <div className="h-full flex flex-col">
+        <h4 className="flex flex-0 items-center text-5xl my-5">
+          Org Management
+        </h4>
+        <div className="flex-1 overflow-y-auto overflow-x-visible">
+          <DragDropContext
+            onDragEnd={onDragEnd}
+            onBeforeDragStart={onBeforeDragStart}
+            onDragStart={onDragStart}
+            onDragUpdate={onDragUpdate}
+          >
+            {renderWithDroppable(
+              {
+                droppableId: "main-1",
+                direction: "vertical",
+                type: "ORG",
+                mapContainerAttrs: (provided, snapshot) => ({
+                  className: classNames('relative flex flex-col', {
+                    "bg-gray-200": snapshot.isDraggingOver,
+                  }),
+                }),
+                // isDropDisabled: draggingState.member,
+              },
+              (provided, snapshot) => rootOrgList.map((orgId: string, index) => {
+                    const org = config.data.get("org", orgId) as Org;
+                    const renderChildCards: OrgCardProps["renderChildCards"] =
+                      renderWithDroppable(
+                        {
+                          droppableId: `${org.id}-org-drop`,
+                          direction: "vertical",
+                          type: "ORG",
+                          mapContainerAttrs: (provide, snapshot) => ({
+                            className: classNames('relative', {
+                              "bg-gray-200": snapshot.isDraggingOver,
+                            })
+                          }),
+                        },
+                        (orgProvided, orgSnapshot, p, orgs) => orgs.map((sub, index) => (
+                              <DraggableOrgCard
+                                compProps={{
+                                  ...p,
+                                  org: sub,
+                                }}
+                                key={sub.id}
+                                draggableId={sub.id}
+                                index={index}
+                                handler={{
+                                  className:
+                                    "absolute w-10 h-10 top-7 left-5 bg-orange-300 rounded-lg",
+                                }}
+                              />
+                            )
+                        )
+                      );
+                    const renderChildFields: OrgCardProps["renderChildFields"] =
+                      renderWithDroppable(
+                        {
+                          droppableId: `${org.id}-member-drop`,
+                          direction: "vertical",
+                          type: "MEMBER",
+                          mapContainerAttrs: (provide, snapshot) => ({
+                            className: classNames('relative', {
+                              "bg-gray-200": snapshot.isDraggingOver,
+                            })
+                          }),
+                        },
+                        (provide, snap, p, members) => members.map((member, index) => (
+                              <DraggableMemberForm
+                                key={member.id}
+                                compProps={{
+                                  member,
+                                  org: p.org,
+                                  onEdit: p.editMember,
+                                }}
+                                handler={{
+                                  className: classNames(
+                                    "w-8 h-8 rounded-lg bg-red-300"
+                                  ),
+                                }}
+                                draggableId={member.id}
+                                index={index}
+                              />
+                            ))
+                        );
+                    return (
+                      <DraggableOrgCard
+                        compProps={{
+                          getMembers: context.getMembers,
+                          getSubOrgs: context.getSubOrgs,
+                          addMember: context.addMember,
+                          editMember: context.editMember,
+                          editOrg: context.editOrg,
+                          org: org,
+                          renderChildCards,
+                          renderChildFields,
+                        }}
+                        handler={{
+                          className:
+                            "absolute w-10 h-10 top-7 left-5 bg-orange-300 rounded-lg",
+                        }}
+                        key={orgId}
+                        draggableId={orgId}
+                        index={index}
+                      />
+                    );
+                  }
+                  
+              )
+            )()}
+          </DragDropContext>
         </div>
-      </DragDropContext>
 
-      <div>
-        <WiredButton onClick={() => {
-          const org = context.addOrg();
-          const newOrgList = rootOrgList.concat(org.id);
-          setRootOrgList(newOrgList)
-        }} className="text-4xl">
-          Add
-        </WiredButton>
-      </div>
-      <div className="flex justify-end">
-        <WiredButton onClick={context.reset} className="text-2xl mr-4">
-          Cancel
-        </WiredButton>
-        <WiredButton onClick={context.save} className="text-2xl">
-          Save
-        </WiredButton>
+        <div className="flex flex-none border-t-2 border-black justify-between py-4">
+          <div>
+            <WiredButton
+              onClick={() => {
+                const org = context.addOrg();
+                const newOrgList = rootOrgList.concat(org.id);
+                setRootOrgList(newOrgList);
+              }}
+              className="text-2xl"
+            >
+              Add
+            </WiredButton>
+          </div>
+          <div>
+            <WiredButton onClick={context.reset} className="text-2xl mr-4">
+              Cancel
+            </WiredButton>
+            <WiredButton onClick={context.save} className="text-2xl">
+              Save
+            </WiredButton>
+          </div>
+        </div>
       </div>
     </WiredCard>
   );

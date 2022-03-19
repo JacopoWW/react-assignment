@@ -1,43 +1,44 @@
 import {
   Draggable,
   DraggableProps,
+  DraggableProvided,
+  DraggableStateSnapshot,
   Droppable,
   DroppableProps,
   DroppableProvided,
   DroppableStateSnapshot,
 } from "react-beautiful-dnd";
 import React, { HTMLAttributes } from "react";
-import _ from "lodash";
-import classNames from "classnames";
+import _ from 'lodash';
 
 export const renderWithDroppable = <T extends unknown[]>(
-  config: Omit<DroppableProps, "children"> & HTMLAttributes<HTMLElement>,
+  config: Omit<DroppableProps, "children"> & {
+    mapContainerAttrs?: (provided: DroppableProvided, snapshot: DroppableStateSnapshot) => Omit<HTMLAttributes<HTMLElement>, keyof DroppableProvided['droppableProps']>;
+    shouldPlaceholder?: (provided: DroppableProvided, snapshot: DroppableStateSnapshot) => boolean;
+  },
   render: (provided: DroppableProvided, snapshot: DroppableStateSnapshot, ...arg: T) => React.ReactNode
 ): ((...arg: T) => React.ReactNode) => {
   return (...arg: T) => (
     <Droppable {...config}>
-      {(provided, snapshot) => (
-        <div
-          ref={provided.innerRef}
-          {...provided.droppableProps}
-          className={classNames(config.className, {
-            'bg-gray-200': snapshot.isDraggingOver,
-          })}
-        >
-          {render(provided, snapshot, ...arg)}
-          {provided.placeholder}
-        </div>
-      )}
+      {(provided, snapshot) => <div
+        ref={provided.innerRef}
+        {...provided.droppableProps}
+        {... _.invoke(config, 'mapContainerAttrs', provided, snapshot)}
+      >
+        {render(provided, snapshot, ...arg)}
+        {(!config.shouldPlaceholder || config.shouldPlaceholder(provided, snapshot)) && provided.placeholder}
+      </div>}
     </Droppable>
   );
 };
 
 export const withDraggable = <T extends {}>(
-  Comp: React.ComponentType<T>
+  Comp: React.ComponentType<T>,
+  mapContainerAttrs?: (provided: DraggableProvided, snapshot: DraggableStateSnapshot) => Omit<HTMLAttributes<HTMLElement>, keyof DraggableProvided['draggableProps']>,
 ): React.FC<
   {
     compProps: T;
-    handler?: HTMLAttributes<HTMLElement>;
+    handler?: Omit<HTMLAttributes<HTMLElement>, keyof Exclude<DraggableProvided['dragHandleProps'], undefined>>;
   } & Omit<DraggableProps, "children">
 > => {
   return (props) => {
@@ -49,17 +50,17 @@ export const withDraggable = <T extends {}>(
       disableInteractiveElementBlocking,
       shouldRespectForcePress,
       compProps,
-      handler: handler,
+      handler,
     } = props;
-    const [draggable, toggleDraggable] = React.useState(false);
-    const check = React.useRef<HTMLInputElement>();
-    React.useEffect(() => {
-      check.current && (check.current.checked = draggable);
-      check.current?.addEventListener("change", (e) => {
-        const checkbox = e.target as HTMLInputElement;
-        toggleDraggable(checkbox?.checked || false);
-      });
-    }, []);
+    // const [draggable, toggleDraggable] = React.useState(false);
+    // const check = React.useRef<HTMLInputElement>();
+    // React.useEffect(() => {
+    //   check.current && (check.current.checked = draggable);
+    //   check.current?.addEventListener("change", (e) => {
+    //     const checkbox = e.target as HTMLInputElement;
+    //     toggleDraggable(checkbox?.checked || false);
+    //   });
+    // }, []);
     return (
       <Draggable
         draggableId={draggableId}
@@ -70,9 +71,7 @@ export const withDraggable = <T extends {}>(
       >
         {(provided, snapshot) => (
           <div
-            className={classNames('flex relative', {
-              'bg-blue-200 cursor-grabbing': snapshot.isDragging,
-            })}
+            {...(mapContainerAttrs && mapContainerAttrs(provided, snapshot))}
             ref={provided.innerRef}
             {...provided.draggableProps}
           >
