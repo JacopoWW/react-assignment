@@ -19,30 +19,28 @@ export function useOrg(data: Data, ctr: Controller): AppContext {
   const [memberState, setMemberState] = React.useState<Member[]>(
     data.memberData
   );
-
-  const context: AppContext = {
-    // this解构掉后为获取对象上其他method，声明变量
+  const methods: Omit<AppContext, 'memberState' | 'orgState'> = React.useMemo(() => ({
     editMember(memberId, orgId, key, val) {
       console.log("编辑了Member");
-      const m = data.get("member", memberId);
+      const m = data.get(DataType.MEMBER, memberId);
       if (key === "representation") {
-        context.editOrg(orgId, key, memberId);
+        methods.editOrg(orgId, key, memberId);
       } else if (m) {
         const member = _.clone(m);
         member[key] = val;
-        data.put("member", member);
+        data.put(DataType.MEMBER, member);
         const newMemberData = data.memberData.slice();
         setMemberState(newMemberData);
         console.log("修改后", member.name);
       }
     },
     editOrg(orgId, key, val) {
-      console.log("编辑了org");
-      const o = data.get("org", orgId);
+      console.log('编辑了ORg', orgId, key, val)
+      const o = data.get(DataType.ORG, orgId);
       if (o) {
         const org = _.clone(o);
         org[key] = val;
-        data.put("org", org);
+        data.put(DataType.ORG, org);
         const newOrgData = data.orgData.slice();
         setOrgState(newOrgData);
       }
@@ -77,6 +75,9 @@ export function useOrg(data: Data, ctr: Controller): AppContext {
       data.save();
       alert("数据已保存！");
     },
+  }), [data, ctr])
+  const context: AppContext = {
+    ...methods,
     memberState,
     orgState,
   };
@@ -113,15 +114,10 @@ const App: React.FC = () => {
   // });
 
   const onDragEnd = (result: DropResult) => {
-    const { destination, source, draggableId } = result;
+    const { destination, source } = result;
     console.log(
       result,
-      "这里是目标",
-      destination,
-      "这里是起点",
-      source,
-      "draggableId",
-      draggableId
+      '拖拽完成'
     );
     if (!destination) {
       return;
@@ -133,7 +129,7 @@ const App: React.FC = () => {
     ) {
       return;
     }
-    if (
+    if ( // root之间
       source.droppableId === "main-1" &&
       source.droppableId === destination.droppableId
     ) {
@@ -142,6 +138,8 @@ const App: React.FC = () => {
       newRootList.splice(source.index, 1);
       newRootList.splice(destination.index, 0, sourceItem);
       setRootOrgList(newRootList);
+    } else if (result.type === DataType.MEMBER && source.droppableId === destination.droppableId) { // 非main下的拖拽
+
     }
 
     // setDragSate({
@@ -159,10 +157,6 @@ const App: React.FC = () => {
     // requestAnimationFrame(() => setDragSate(newDragState));
   };
 
-  const onDragStart = (info: DragStart) => {
-    const arg = info.draggableId?.split("-");
-    console.log('drag开始', arg, JSON.stringify(info))
-  }
   const onDragUpdate = (info: DragUpdate) => {
     const arg = info.draggableId?.split('-');
     console.log('drag状态更新', arg, JSON.stringify(info))
@@ -176,7 +170,7 @@ const App: React.FC = () => {
   //     toggleDraggle(checkbox?.checked || false);
   //   });
   // }, []);
-  console.log("app重新渲染了", undefined ?? 123, true ?? 123);
+  console.log("app重新渲染了");
   return (
     <WiredCard
       className="app grid grid-cols-1 grid-rows-1 relative h-[100vh] w-full p-8 bg-white"
@@ -190,29 +184,27 @@ const App: React.FC = () => {
           <DragDropContext
             onDragEnd={onDragEnd}
             onBeforeDragStart={onBeforeDragStart}
-            onDragStart={onDragStart}
             onDragUpdate={onDragUpdate}
           >
             {renderWithDroppable(
               {
                 droppableId: "main-1",
                 direction: "vertical",
-                type: "ORG",
+                type: DataType.ORG,
                 mapContainerAttrs: (provided, snapshot) => ({
                   className: classNames('relative flex flex-col', {
                     "bg-gray-200": snapshot.isDraggingOver,
                   }),
                 }),
-                // isDropDisabled: draggingState.member,
               },
               (provided, snapshot) => rootOrgList.map((orgId: string, index) => {
-                    const org = config.data.get("org", orgId) as Org;
+                    const org = config.data.get(DataType.ORG, orgId) as Org;
                     const renderChildCards: OrgCardProps["renderChildCards"] =
                       renderWithDroppable(
                         {
-                          droppableId: `${org.id}-org-drop`,
+                          droppableId: `${org.id}-${DataType.ORG}`,
                           direction: "vertical",
-                          type: "ORG",
+                          type: DataType.ORG,
                           mapContainerAttrs: (provide, snapshot) => ({
                             className: classNames('relative', {
                               "bg-gray-200": snapshot.isDraggingOver,
@@ -239,9 +231,9 @@ const App: React.FC = () => {
                     const renderChildFields: OrgCardProps["renderChildFields"] =
                       renderWithDroppable(
                         {
-                          droppableId: `${org.id}-member-drop`,
+                          droppableId: `${org.id}-${DataType.MEMBER}`,
                           direction: "vertical",
-                          type: "MEMBER",
+                          type: DataType.MEMBER,
                           mapContainerAttrs: (provide, snapshot) => ({
                             className: classNames('relative', {
                               "bg-gray-200": snapshot.isDraggingOver,

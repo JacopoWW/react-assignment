@@ -22,6 +22,11 @@ export interface Org {
   members?: string[] | null;
 }
 
+export enum DataType {
+  MEMBER="MEMBER",
+  ORG="ORG",
+}
+
 export class Controller {
   model: Data;
   constructor(model: Data) {
@@ -31,9 +36,9 @@ export class Controller {
     // this.addMember = this.addMember.bind(this);
   }
   findOrgMember(orgId: string): Member[] {
-    const org = this.model.get('org', orgId);
+    const org = this.model.get(DataType.ORG, orgId);
     if (org && org.members && org.members.length > 0) {
-      return org.members.map(m => this.model.get('member', m) as Member).filter(Boolean);
+      return org.members.map(m => this.model.get(DataType.MEMBER, m) as Member).filter(Boolean);
     } else {
       return [];
     }
@@ -42,23 +47,22 @@ export class Controller {
     return _.filter(this.model.orgData, ['parent', orgId]);
   }
   addMember(orgId: string): Member | undefined {
-    const member = this.model.create('member');
-    const o = this.model.get('org', orgId);
+    const member = this.model.create(DataType.MEMBER);
+    const o = this.model.get(DataType.ORG, orgId);
     if (o && o.members) {
       o.members = o.members.concat(member.id);
-      this.model.put('org', o);
+      this.model.put(DataType.ORG, o);
     } else if (o) {
       o.members = [member.id];
-      this.model.put('org', o);
+      this.model.put(DataType.ORG, o);
     } 
     return member;
   }
   addOrg(): Org {
-    return this.model.create('org');
+    return this.model.create(DataType.ORG);
   }
 }
 
-export type DataType = "member" | "org";
 export class Data {
   orgData: Org[];
   memberData: Member[];
@@ -72,10 +76,10 @@ export class Data {
       this.memberData.map((member) => [member.id, member])
     );
   }
-  create(type: "member"): Member;
-  create(type: "org"): Org;
+  create(type: DataType.MEMBER): Member;
+  create(type: DataType.ORG): Org;
   create(type: DataType): Member | Org {
-    if (type === "org") {
+    if (type === DataType.ORG) {
       const id = `${type}-${this.orgData.length + 1}`;
       const org = {
         id,
@@ -100,11 +104,11 @@ export class Data {
       return member;
     }
   }
-  put(type: "member", data: Member): Member | undefined;
-  put(type: "org", data: Org): Org | undefined;
+  put(type: DataType.MEMBER, data: Member): Member | undefined;
+  put(type: DataType.ORG, data: Org): Org | undefined;
   put(type: DataType, data: Org | Member): Member | Org | undefined {
     const d = _.clone(data);
-    if (type === 'member') {
+    if (type === DataType.MEMBER) {
       const idx = _.findIndex(this.memberData, ['id', d.id]);
       this.memberData[idx] = d as Member;
       this.memberMap.set(d.id, d as Member);
@@ -117,10 +121,10 @@ export class Data {
     }
   }
   delete() {}
-  get(type: "member", id: string): Member | undefined;
-  get(type: "org", id: string): Org | undefined;
+  get(type: DataType.MEMBER, id: string): Member | undefined;
+  get(type: DataType.ORG, id: string): Org | undefined;
   get(type: DataType, id: string): Member | Org | undefined {
-    if (type === "member") {
+    if (type === DataType.MEMBER) {
       return this.memberMap.get(id);
     } else {
       return this.orgMap.get(id);

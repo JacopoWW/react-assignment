@@ -89,32 +89,39 @@ export interface OrgCardProps {
 }
 
 export const OrgCard: React.FC<OrgCardProps> = (props) => {
+
   const {
     org,
     getMembers,
     getSubOrgs,
     addMember,
     editOrg,
-    renderChildCards = (p, orgs) => (
-      <div className="grow">
-        {orgs.map((sub) => (
-          <OrgCard key={org.id} {...props} org={sub} />
-        ))}
-      </div>
-    ),
-    renderChildFields = (p, members) => (
-      <div className="grow">
-        {members.map((member) => (
-          <MemberForm
-            key={member.id}
-            member={member}
-            org={p.org}
-            onEdit={p.editMember}
-          />
-        ))}
-      </div>
-    ),
+    editMember,
   } = props;
+  const defaultChildCardsRender = React.useCallback((p, orgs: Org[]) => (
+    <div className="grow">
+      {orgs.map((sub) => (
+        <OrgCard key={sub.id} org={sub} {...{getMembers, getSubOrgs, addMember, editOrg, editMember}} />
+      ))}
+    </div>
+  ), [getMembers, getSubOrgs, addMember, editOrg, editMember]);
+  const defaultChildFieldsRender = React.useCallback((p, members: Member[]) => (
+    <div className="grow">
+      {members.map((member) => (
+        <MemberForm
+          key={member.id}
+          member={member}
+          org={p.org}
+          onEdit={p.editMember}
+        />
+      ))}
+    </div>
+  ), [])
+  const {
+    renderChildCards = defaultChildCardsRender,
+    renderChildFields = defaultChildFieldsRender,
+  } = props;
+
 
   const [expand, setExpand] = React.useState<boolean>(false);
   const members = getMembers(org.id);
@@ -130,12 +137,12 @@ export const OrgCard: React.FC<OrgCardProps> = (props) => {
         editOrg(orgId, "name", input.value);
       });
     });
-  }, [org.id]);
+  }, [org.id, editOrg]);
   useEffect(() => {
     // 可能shadowElement 不响应react setAttribute， 手动赋值强制状态统一
     _.set(nameInput.current as HTMLInputElement, "value", org.name);
   }, [org]);
-
+  console.log('重新运行了', '这里是sub')
   const subOrgs = useMemo(() => getSubOrgs(org.id), [org.id, getSubOrgs]);
 
   return (
@@ -181,9 +188,9 @@ export interface MemberFormProps {
 
 export const MemberForm: React.FC<MemberFormProps> = (props) => {
   const { member, org, onEdit } = props;
-  const inputRefs = MEMBER_COLUMNS.map(() =>
+  const inputRefs = useMemo(() => MEMBER_COLUMNS.map(() =>
     React.createRef<HTMLInputElement>()
-  );
+  ), []);
   useEffect(() => {
     // 这里的状态都是在didMount时的， 只能用索引，不能用指针。
     inputRefs.forEach((ref, idx) => {
@@ -200,7 +207,7 @@ export const MemberForm: React.FC<MemberFormProps> = (props) => {
         });
       });
     });
-  }, [member.id, org.id]);
+  }, [member.id, org.id, inputRefs, onEdit]);
   useEffect(() => {
     // 可能shadowElement 不响应react setAttribute， 手动赋值强制状态统一
     inputRefs.forEach((ref, idx) => {
@@ -212,7 +219,7 @@ export const MemberForm: React.FC<MemberFormProps> = (props) => {
         Object.assign(ele, mapProps);
       }
     });
-  }, [org, member]);
+  }, [org, member, inputRefs]);
   return (
     <div className="flex">
       {MEMBER_COLUMNS.map((col, idx) => {
