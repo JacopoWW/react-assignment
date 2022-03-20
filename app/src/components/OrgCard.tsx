@@ -86,7 +86,38 @@ export interface OrgCardProps {
   editOrg: AppContext["editOrg"];
   renderChildCards?: (p: OrgCardProps, orgs: Org[]) => React.ReactNode;
   renderChildFields?: (p: OrgCardProps, members: Member[]) => React.ReactNode;
+  forceClose?: boolean;
 }
+
+const defaultChildCardsRender = ((p: OrgCardProps, orgs: Org[]) => (
+  <div className="grow">
+    {orgs.map((sub) => (
+      <OrgCard
+        forceClose={p.forceClose}
+        key={sub.id}
+        org={sub}
+        getMembers={p.getMembers}
+        getSubOrgs={p.getSubOrgs}
+        addMember={p.addMember}
+        editOrg={p.editOrg}
+        editMember={p.editMember}
+      />
+    ))}
+  </div>
+));
+
+const defaultChildFieldsRender = (p: OrgCardProps, members: Member[]) => (
+  <div className="grow">
+    {members.map((member) => (
+      <MemberForm
+        key={member.id}
+        member={member}
+        org={p.org}
+        onEdit={p.editMember}
+      />
+    ))}
+  </div>
+);
 
 export const OrgCard: React.FC<OrgCardProps> = (props) => {
 
@@ -96,34 +127,14 @@ export const OrgCard: React.FC<OrgCardProps> = (props) => {
     getSubOrgs,
     addMember,
     editOrg,
-    editMember,
-  } = props;
-  const defaultChildCardsRender = React.useCallback((p, orgs: Org[]) => (
-    <div className="grow">
-      {orgs.map((sub) => (
-        <OrgCard key={sub.id} org={sub} {...{getMembers, getSubOrgs, addMember, editOrg, editMember}} />
-      ))}
-    </div>
-  ), [getMembers, getSubOrgs, addMember, editOrg, editMember]);
-  const defaultChildFieldsRender = React.useCallback((p, members: Member[]) => (
-    <div className="grow">
-      {members.map((member) => (
-        <MemberForm
-          key={member.id}
-          member={member}
-          org={p.org}
-          onEdit={p.editMember}
-        />
-      ))}
-    </div>
-  ), [])
-  const {
+    forceClose,
     renderChildCards = defaultChildCardsRender,
     renderChildFields = defaultChildFieldsRender,
   } = props;
 
+  const subOrgs = getSubOrgs(org.id);
 
-  const [expand, setExpand] = React.useState<boolean>(false);
+  const [expand, setExpand] = React.useState<boolean>(subOrgs.length <= 0);
   const members = getMembers(org.id);
 
   const nameInput = React.useRef<HTMLInputElement>();
@@ -142,8 +153,7 @@ export const OrgCard: React.FC<OrgCardProps> = (props) => {
     // 可能shadowElement 不响应react setAttribute， 手动赋值强制状态统一
     _.set(nameInput.current as HTMLInputElement, "value", org.name);
   }, [org]);
-  console.log('重新运行了', '这里是sub')
-  const subOrgs = useMemo(() => getSubOrgs(org.id), [org.id, getSubOrgs]);
+  // console.log('重新运行了', '这里是sub')
 
   return (
     <WiredCard className="w-full pb-4" elevation={1}>
@@ -166,13 +176,13 @@ export const OrgCard: React.FC<OrgCardProps> = (props) => {
         </div>
         {renderChildFields(props, members)}
         <div className="flex pl-4 mt-4 gap-4 items-start overflow-x-hidden">
-          {subOrgs.length > 0 && (
-            <WiredButton elevation={1} onClick={() => setExpand(!expand)}>
-              <span className="px-4">{expand ? "-" : "+"}</span>
-            </WiredButton>
-          )}
-          <div className="grow">
-            {expand && subOrgs.length > 0 && renderChildCards(props, subOrgs)}
+          <WiredButton elevation={1} onClick={() => setExpand(!expand)}>
+            <span className="px-4">{(expand && !forceClose) ? "-" : "+"}</span>
+          </WiredButton>
+          <div className={classNames('grow', {
+            hidden: forceClose || !expand
+          })}>
+            {renderChildCards(props, subOrgs)}
           </div>
         </div>
       </section>

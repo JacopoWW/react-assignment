@@ -17,8 +17,8 @@ test("DataService crud", () => {
 
   expect(data.memberData.length).toBe(memberData.length + 1);
   expect(data.orgData.length).toBe(orgData.length + 1);
-  expect(_.last(data.memberData)?.id).toBe(`MEMBER-${data.memberData.length}`);
-  expect(_.last(data.orgData)?.id).toBe(`ORG-${data.orgData.length}`);
+  expect(_.last(data.memberData)?.id).toBe(`${DataType.MEMBER}-${data.memberData.length}`);
+  expect(_.last(data.orgData)?.id).toBe(`${DataType.ORG}-${data.orgData.length}`);
 
   // search - put
   const mres = _.sample(memberData) as Member;

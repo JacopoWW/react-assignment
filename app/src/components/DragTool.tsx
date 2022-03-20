@@ -10,11 +10,12 @@ import {
 } from "react-beautiful-dnd";
 import React, { HTMLAttributes } from "react";
 import _ from 'lodash';
+import classNames from "classnames";
 
 export const renderWithDroppable = <T extends unknown[]>(
   config: Omit<DroppableProps, "children"> & {
     mapContainerAttrs?: (provided: DroppableProvided, snapshot: DroppableStateSnapshot) => Omit<HTMLAttributes<HTMLElement>, keyof DroppableProvided['droppableProps']>;
-    shouldPlaceholder?: (provided: DroppableProvided, snapshot: DroppableStateSnapshot) => boolean;
+    noPlaceHolder?: (provided: DroppableProvided, snapshot: DroppableStateSnapshot) => boolean;
   },
   render: (provided: DroppableProvided, snapshot: DroppableStateSnapshot, ...arg: T) => React.ReactNode
 ): ((...arg: T) => React.ReactNode) => {
@@ -26,7 +27,11 @@ export const renderWithDroppable = <T extends unknown[]>(
         {... _.invoke(config, 'mapContainerAttrs', provided, snapshot)}
       >
         {render(provided, snapshot, ...arg)}
-        {(!config.shouldPlaceholder || config.shouldPlaceholder(provided, snapshot)) && provided.placeholder}
+        <div className={classNames({
+          hidden: config.noPlaceHolder && config.noPlaceHolder(provided, snapshot),
+        })}>
+          {provided.placeholder}
+        </div>
       </div>}
     </Droppable>
   );

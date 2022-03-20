@@ -23,8 +23,8 @@ export interface Org {
 }
 
 export enum DataType {
-  MEMBER="MEMBER",
-  ORG="ORG",
+  MEMBER="member",
+  ORG="org",
 }
 
 export class Controller {

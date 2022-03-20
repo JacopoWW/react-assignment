@@ -10,7 +10,7 @@ import {
 import { MemberForm, OrgCard, OrgCardProps } from "./components/OrgCard";
 import { WiredCard, WiredButton } from "react-wired-elements";
 import _ from "lodash";
-import { DragDropContext, DropResult, DragStart, DragUpdate } from "react-beautiful-dnd";
+import { DragDropContext, DropResult, DragStart, DragUpdate, BeforeCapture } from "react-beautiful-dnd";
 import { renderWithDroppable, withDraggable } from "./components/DragTool";
 import classNames from "classnames";
 
@@ -112,9 +112,10 @@ const App: React.FC = () => {
   //   member: false,
   //   org: false,
   // });
-
+  const [draggingId, setDragging] = useState<string | null>(null);
   const onDragEnd = (result: DropResult) => {
     const { destination, source } = result;
+    setDragging(null);
     console.log(
       result,
       '拖拽完成'
@@ -148,18 +149,20 @@ const App: React.FC = () => {
     // });
   };
 
-  const onBeforeDragStart = (info: DragStart) => {
-    const arg = info.draggableId?.split("-");
-    console.log('drag开始了', arg, JSON.stringify(info))
+  const onBeforeCapture = (info: BeforeCapture) => {
+    setDragging(info.draggableId);
     // const newDragState = _.clone(draggingState);
     // newDragState[type as DataType] = true;
     // console.log('拖动之前', info, type, newDragState);
     // requestAnimationFrame(() => setDragSate(newDragState));
   };
+  const onBeforeStart = (info: DragStart) => {
+    // 在开始拖之前先把 这个元素放在root里
+    // setDraggingOver(info.source.droppableId);
+  }
 
   const onDragUpdate = (info: DragUpdate) => {
-    const arg = info.draggableId?.split('-');
-    console.log('drag状态更新', arg, JSON.stringify(info))
+    console.log('drag状态更新', info.destination?.droppableId)
   }
 
   // const check = React.useRef<HTMLInputElement>();
@@ -176,15 +179,16 @@ const App: React.FC = () => {
       className="app grid grid-cols-1 grid-rows-1 relative h-[100vh] w-full p-8 bg-white"
       elevation={1}
     >
-      <div className="h-full flex flex-col">
+      <div className="h-full w-full flex flex-col">
         <h4 className="flex flex-0 items-center text-5xl my-5">
           Org Management
         </h4>
-        <div className="flex-1 overflow-y-auto overflow-x-visible">
+        <div className="flex-1 w-full overflow-y-auto">
           <DragDropContext
             onDragEnd={onDragEnd}
-            onBeforeDragStart={onBeforeDragStart}
+            onBeforeCapture={onBeforeCapture}
             onDragUpdate={onDragUpdate}
+            onBeforeDragStart={onBeforeStart}
           >
             {renderWithDroppable(
               {
@@ -199,23 +203,28 @@ const App: React.FC = () => {
               },
               (provided, snapshot) => rootOrgList.map((orgId: string, index) => {
                     const org = config.data.get(DataType.ORG, orgId) as Org;
+                    // console.log('snapshot信息', snapshot.draggingFromThisWith, snapshot.draggingOverWith, snapshot.isDraggingOver);
+                    // setDraggingOver(snapshot.draggingFromThisWith || null);
+                    // console.log(`${org.id}-${DataType.ORG}`, draggingId, provided.);
                     const renderChildCards: OrgCardProps["renderChildCards"] =
                       renderWithDroppable(
                         {
-                          droppableId: `${org.id}-${DataType.ORG}`,
+                          droppableId: `${orgId}-${DataType.ORG}`,
                           direction: "vertical",
                           type: DataType.ORG,
                           mapContainerAttrs: (provide, snapshot) => ({
-                            className: classNames('relative', {
+                            className: classNames('relative py-10', {
                               "bg-gray-200": snapshot.isDraggingOver,
                             })
                           }),
                         },
-                        (orgProvided, orgSnapshot, p, orgs) => orgs.map((sub, index) => (
+                        (orgProvided, orgSnapshot, p, orgs) => orgs.map((sub, index) => {
+                          return (
                               <DraggableOrgCard
                                 compProps={{
                                   ...p,
                                   org: sub,
+                                  forceClose: draggingId === sub.id,
                                 }}
                                 key={sub.id}
                                 draggableId={sub.id}
@@ -224,14 +233,16 @@ const App: React.FC = () => {
                                   className:
                                     "absolute w-10 h-10 top-7 left-5 bg-orange-300 rounded-lg",
                                 }}
+                                
                               />
                             )
+                          }
                         )
                       );
                     const renderChildFields: OrgCardProps["renderChildFields"] =
                       renderWithDroppable(
                         {
-                          droppableId: `${org.id}-${DataType.MEMBER}`,
+                          droppableId: `${orgId}-${DataType.MEMBER}`,
                           direction: "vertical",
                           type: DataType.MEMBER,
                           mapContainerAttrs: (provide, snapshot) => ({
@@ -267,6 +278,7 @@ const App: React.FC = () => {
                           editMember: context.editMember,
                           editOrg: context.editOrg,
                           org: org,
+                          forceClose: draggingId === org.id,
                           renderChildCards,
                           renderChildFields,
                         }}
