@@ -14,15 +14,15 @@
 #### Spec1
 
 - [✅] * User can modify organization details (name).
-- [🟨] * (debugging)User can move an organization under the other organization.
+- [✅] * (debugging)User can move an organization under the other organization.
 - [✅] * user can create an organization.
 
 #### Spec2
 - [✅] * User can modify member info (name, age or status).
-- [🟨] * (debugging) User can move a member to the other organization.
+- [✅] * (debugging) User can move a member to the other organization.
 - [✅] * User can create a member.
 - [✅] * User can set a member as the representation, if the member is activated.
-
+- tip: 由于 draggable Container 嵌套，在拖子元素向上外层拖时，可拖动状态时会导致高度变化，暂时没想出解决方案。
 #### Notes
 
 - [❌] * User can't proceed to next step unless they have valid inputs.

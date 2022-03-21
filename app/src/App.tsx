@@ -40,9 +40,11 @@ export function useOrg(data: Data, ctr: Controller): AppContext {
       if (o) {
         const org = _.clone(o);
         org[key] = val;
+        key === 'members' && !org.members?.includes(org.representation) && (org.representation = '');
         data.put(DataType.ORG, org);
         const newOrgData = data.orgData.slice();
         setOrgState(newOrgData);
+        return org;
       }
     },
     addMember(orgId) {
@@ -69,7 +71,7 @@ export function useOrg(data: Data, ctr: Controller): AppContext {
       data.reset();
       setOrgState(data.orgData);
       setMemberState(data.memberData);
-      alert("数据已恢复到默认！");
+      alert("数据已恢复到最近一次保存的值！");
     },
     save() {
       data.save();
@@ -123,26 +125,68 @@ const App: React.FC = () => {
     if (!destination) {
       return;
     }
-
     if (
       destination.droppableId === source.droppableId &&
       destination.index === source.index
     ) {
       return;
     }
-    if ( // root之间
-      source.droppableId === "main-1" &&
+
+    if ( // 拖动Org - root之间
+      source.droppableId === "root" &&
       source.droppableId === destination.droppableId
     ) {
       const newRootList = rootOrgList.slice();
-      const sourceItem = newRootList[source.index];
-      newRootList.splice(source.index, 1);
-      newRootList.splice(destination.index, 0, sourceItem);
+      // const sourceItem = newRootList[source.index];
+      // newRootList.splice(source.index, 1);
+      // newRootList.splice(destination.index, 0, sourceItem);
+      const tmp = newRootList[destination.index];
+      newRootList[destination.index] = newRootList[source.index];
+      newRootList[source.index] = tmp;
       setRootOrgList(newRootList);
-    } else if (result.type === DataType.MEMBER && source.droppableId === destination.droppableId) { // 非main下的拖拽
-
+    } else if (source.droppableId === "root") { // 从root到org
+      const newRootList = rootOrgList.slice();
+      newRootList.splice(source.index, 1);
+      context.editOrg(result.draggableId, 'parent', destination.droppableId.replace(RegExp(`-${DataType.ORG}$`), ''));
+      setRootOrgList(newRootList);
+    } else if ( // org拖到 root
+      result.type === DataType.ORG &&
+      destination.droppableId === "root"
+    ) {
+      const newRootList = rootOrgList.slice();
+      const sourceItem = context.editOrg(result.draggableId, 'parent', null);
+      sourceItem && newRootList.splice(destination.index, 0, sourceItem.id);
+      setRootOrgList(newRootList);
+    } else if ( // 在org之间
+      result.type === DataType.ORG
+    ) {
+      const targetId = destination.droppableId.replace(RegExp(`-${DataType.ORG}$`), '');
+      context.editOrg(result.draggableId, 'parent', targetId);
     }
 
+    if ( // 同一org下的成员拖动
+      result.type === DataType.MEMBER &&
+      source.droppableId === destination.droppableId
+    ) {
+      const orgId = source.droppableId.replace(RegExp(`-${DataType.MEMBER}$`), '');
+      const org = config.data.get(DataType.ORG, orgId) as Org;
+      const newMembers = (org.members as string[]).slice();
+      const tmp = newMembers[destination.index];
+      newMembers[destination.index] = newMembers[source.index];
+      newMembers[source.index] = tmp;
+      context.editOrg(orgId, 'members', newMembers);
+    } else if ( // 不同org下插入成员
+      result.type === DataType.MEMBER
+    ) {
+      const sourceOrgId = source.droppableId.replace(RegExp(`-${DataType.MEMBER}$`), '');
+      const destinationOrgId = destination.droppableId.replace(RegExp(`-${DataType.MEMBER}$`), '');
+      const sourceOrgMembers = Array.from(config.data.get(DataType.ORG, sourceOrgId)?.members as string[]);
+      const destinationOrgMembers = Array.from(config.data.get(DataType.ORG, destinationOrgId)?.members as string[]);
+      sourceOrgMembers.splice(source.index, 1);
+      destinationOrgMembers.splice(destination.index, 0, result.draggableId);
+      context.editOrg(sourceOrgId, 'members', sourceOrgMembers);
+      context.editOrg(destinationOrgId, 'members', destinationOrgMembers);
+    }
     // setDragSate({
     //   member: false,
     //   org: false,
@@ -164,15 +208,6 @@ const App: React.FC = () => {
   const onDragUpdate = (info: DragUpdate) => {
     console.log('drag状态更新', info.destination?.droppableId)
   }
-
-  // const check = React.useRef<HTMLInputElement>();
-  // React.useEffect(() => {
-  //   check.current && (check.current.checked = lockDraggle);
-  //   check.current?.addEventListener("change", (e) => {
-  //     const checkbox = e.target as HTMLInputElement;
-  //     toggleDraggle(checkbox?.checked || false);
-  //   });
-  // }, []);
   console.log("app重新渲染了");
   return (
     <WiredCard
@@ -183,7 +218,7 @@ const App: React.FC = () => {
         <h4 className="flex flex-0 items-center text-5xl my-5">
           Org Management
         </h4>
-        <div className="flex-1 w-full overflow-y-auto">
+        <div className="flex-1 w-full overflow-y-auto overflow-x-hidden">
           <DragDropContext
             onDragEnd={onDragEnd}
             onBeforeCapture={onBeforeCapture}
@@ -191,8 +226,8 @@ const App: React.FC = () => {
             onBeforeDragStart={onBeforeStart}
           >
             {renderWithDroppable(
-              {
-                droppableId: "main-1",
+              () => ({
+                droppableId: "root",
                 direction: "vertical",
                 type: DataType.ORG,
                 mapContainerAttrs: (provided, snapshot) => ({
@@ -200,16 +235,16 @@ const App: React.FC = () => {
                     "bg-gray-200": snapshot.isDraggingOver,
                   }),
                 }),
-              },
+              }),
               (provided, snapshot) => rootOrgList.map((orgId: string, index) => {
                     const org = config.data.get(DataType.ORG, orgId) as Org;
                     // console.log('snapshot信息', snapshot.draggingFromThisWith, snapshot.draggingOverWith, snapshot.isDraggingOver);
                     // setDraggingOver(snapshot.draggingFromThisWith || null);
                     // console.log(`${org.id}-${DataType.ORG}`, draggingId, provided.);
                     const renderChildCards: OrgCardProps["renderChildCards"] =
-                      renderWithDroppable(
-                        {
-                          droppableId: `${orgId}-${DataType.ORG}`,
+                      renderWithDroppable<[OrgCardProps, Org[]]>(
+                        (p) => ({
+                          droppableId: `${p.org.id}-${DataType.ORG}`,
                           direction: "vertical",
                           type: DataType.ORG,
                           mapContainerAttrs: (provide, snapshot) => ({
@@ -217,7 +252,7 @@ const App: React.FC = () => {
                               "bg-gray-200": snapshot.isDraggingOver,
                             })
                           }),
-                        },
+                        }),
                         (orgProvided, orgSnapshot, p, orgs) => orgs.map((sub, index) => {
                           return (
                               <DraggableOrgCard
@@ -231,7 +266,10 @@ const App: React.FC = () => {
                                 index={index}
                                 handler={{
                                   className:
-                                    "absolute w-10 h-10 top-7 left-5 bg-orange-300 rounded-lg",
+                                    "absolute w-10 h-10 top-7 text-center leading-[40px] left-5 bg-orange-300 rounded-lg",
+                                  dangerouslySetInnerHTML: {
+                                    __html: '⚓'
+                                  }
                                 }}
                                 
                               />
@@ -240,9 +278,9 @@ const App: React.FC = () => {
                         )
                       );
                     const renderChildFields: OrgCardProps["renderChildFields"] =
-                      renderWithDroppable(
-                        {
-                          droppableId: `${orgId}-${DataType.MEMBER}`,
+                      renderWithDroppable<[OrgCardProps, Member[]]>(
+                        (p) => ({
+                          droppableId: `${p.org.id}-${DataType.MEMBER}`,
                           direction: "vertical",
                           type: DataType.MEMBER,
                           mapContainerAttrs: (provide, snapshot) => ({
@@ -250,7 +288,7 @@ const App: React.FC = () => {
                               "bg-gray-200": snapshot.isDraggingOver,
                             })
                           }),
-                        },
+                        }),
                         (provide, snap, p, members) => members.map((member, index) => (
                               <DraggableMemberForm
                                 key={member.id}
@@ -261,8 +299,11 @@ const App: React.FC = () => {
                                 }}
                                 handler={{
                                   className: classNames(
-                                    "w-8 h-8 rounded-lg bg-red-300"
+                                    "w-8 h-8 rounded-lg bg-red-300 text-center leading-[32px]"
                                   ),
+                                  dangerouslySetInnerHTML: {
+                                    __html: '⚓'
+                                  }
                                 }}
                                 draggableId={member.id}
                                 index={index}
@@ -284,7 +325,10 @@ const App: React.FC = () => {
                         }}
                         handler={{
                           className:
-                            "absolute w-10 h-10 top-7 left-5 bg-orange-300 rounded-lg",
+                            "absolute w-10 h-10 top-7 left-5 bg-orange-300 rounded-lg text-center leading-[40px]",
+                          dangerouslySetInnerHTML: {
+                            __html: '⚓'
+                          }
                         }}
                         key={orgId}
                         draggableId={orgId}

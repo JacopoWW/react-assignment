@@ -151,7 +151,7 @@ export interface AppContext {
   memberState: Member[];
   orgState: Org[];
   editMember: <T extends keyof Member>(memberId: string, orgId: string, key:T, val: Member[T]) => void;
-  editOrg: <T extends keyof Org>(orgId: string, key: T, val: Org[T]) => void;
+  editOrg: <T extends keyof Org>(orgId: string, key: T, val: Org[T]) => Org | void;
   addMember: (org: string) => void;
   addOrg: () => Org;
   getMembers: (orgId: string) => Member[];
